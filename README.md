@@ -19,5 +19,7 @@ De esta forma, el sistema garantiza la entrega controlada y segura de alcohol en
 
 ## Diagrama de estados
 
-<img width="471" height="461" alt="Diagrama de estado drawio" src="https://github.com/user-attachments/assets/d7a6abe2-3215-4a74-8cd3-45adedecf7a5" />
+<img width="361" height="511" alt="Diagrama de estado drawio (1)" src="https://github.com/user-attachments/assets/df4ec0aa-a5b2-420a-a5f7-a5a0dfc7a125" />
+
+*El estado Cooldown impide que el dispensador entregue más de una dosis por la misma detección de mano. Durante este estado, se espera un tiempo mínimo hasta permitir un nuevo ciclo de dispensado.
 
