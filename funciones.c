@@ -1,122 +1,101 @@
 #include "mylib.h"
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
+#include <stdio.h>
 
-/* Helpers de simulación: preguntar al usuario por sensor y nivel.
-   En la versión final estos leerían pines / ADC. */
-static int leer_sensor_presencia(void) {
-    char s[8];
-    printf("Sim: mano presente? (s/n): ");
-    if (!fgets(s, sizeof(s), stdin)) return 0;
-    return (s[0] == 's' || s[0] == 'S');
-}
-static int leer_nivel_ok(void) {
-    char s[8];
-    printf("Sim: nivel OK? (s/n): ");
-    if (!fgets(s, sizeof(s), stdin)) return 1; /* por defecto OK */
-    return (s[0] == 's' || s[0] == 'S');
+/* Simulación por entrada de usuario. */
+
+int leer_sensor_presencia() {
+    int valor;
+    printf("Hay mano? (1 = si / 0 = no): ");
+    scanf("%d", &valor);
+    return valor;
 }
 
-/* Retardo portable en ms */
-static void wait_ms(int ms) {
-#ifdef _WIN32
-    Sleep(ms);
-#else
-    usleep((useconds_t)ms * 1000);
-#endif
+int leer_nivel() {
+    int valor;
+    printf("Nivel de alcohol (0 = sin stock / 1 = bajo / 2 = alto): ");
+    scanf("%d", &valor);
+    return valor; // 0 = sin stock, 1 = bajo, 2 = alto (LEDs)
 }
 
-/* INICIO: configura y pasa a ESPERA (no evalua condiciones) */
+/*FUNCIONES DE ESTADO*/
+
 estados_t f_inicio(const config_t *cfg) {
-    (void)cfg;
-    printf("\n[INICIO] Inicializando sistema...\n");
-    /* aquí se haría autotest, inicialización de GPIO, etc. */
-    printf("[INICIO] Config completada -> pasando a ESPERA\n\n");
+    printf("Tiempos cargados: dispense=%d ms, cooldown=%d ms, check=%d ms\n",
+           cfg->t_dispense, cfg->t_cooldown, cfg->t_check);
     return ESPERA;
 }
 
-/* ESPERA: si sensor && nivel_ok -> DISPENSA; si !nivel_ok -> SIN_STOCK;
-   si no, se queda en ESPERA (autotransición) */
 estados_t f_espera(const config_t *cfg) {
-    (void)cfg;
     printf("[ESPERA] Esperando mano...\n");
-    int nivel_ok = leer_nivel_ok();
-    if (!nivel_ok) {
-        printf("[ESPERA] Nivel NO OK -> SIN_STOCK\n\n");
+    int nivel = leer_nivel();
+
+    if (nivel == 0) {
+        printf("[ESPERA] Sin stock -> pasa a SIN_STOCK\n\n");
         return SIN_STOCK;
     }
 
     int presencia = leer_sensor_presencia();
-    if (presencia && nivel_ok) {
-        printf("[ESPERA] Mano detectada y nivel OK -> DISPENSA\n\n");
+    if (presencia && nivel > 0) {
+        printf("[ESPERA] Mano detectada y nivel OK -> pasa a DISPENSA\n\n");
         return DISPENSA;
     }
 
-    /* queda en espera */
-    printf("[ESPERA] Sin evento -> sigo en ESPERA\n\n");
+    printf("[ESPERA] No hay mano. Se mantiene en ESPERA.\n\n");
     return ESPERA;
 }
 
-/* DISPENSA: activa la 'bomba' por t_dispense ms. Si durante el proceso nivel baja,
-   se va a SIN_STOCK (simulado preguntando otra vez). */
 estados_t f_dispensa(const config_t *cfg) {
-    printf("[DISPENSA] Activando bomba por %d ms...\n", cfg->t_dispense);
-    /* Simulamos dispensado con un sleep */
-    wait_ms(cfg->t_dispense);
+    printf("[DISPENSA] Dispensando alcohol durante %d ms...\n", cfg->t_dispense);
+    printf("... (bomba activada) ...\n");
 
-    /* chequeo nivel al finalizar (simulado) */
-    printf("[DISPENSA] Fin dispensado. Chequeando nivel...\n");
-    int nivel_ok = leer_nivel_ok();
-    if (!nivel_ok) {
-        printf("[DISPENSA] Nivel NO OK -> SIN_STOCK\n\n");
+    int nivel = leer_nivel();
+    if (nivel == 0) {
+        printf("[DISPENSA] Sin stock detectado -> pasa a SIN_STOCK\n\n");
         return SIN_STOCK;
     }
 
-    printf("[DISPENSA] Dispensa completa -> ESPERA_RETIRO (cooldown)\n\n");
+    printf("[DISPENSA] Fin del ciclo -> pasa a ESPERA_RETIRO\n\n");
     return ESPERA_RETIRO;
 }
 
-/* ESPERA_RETIRO: espera el cooldown evitando re-dispensar inmediatamente.
-   Luego vuelve a ESPERA (o a SIN_STOCK si no hay nivel). */
 estados_t f_espera_retiro(const config_t *cfg) {
-    printf("[ESPERA_RETIRO] Esperando cooldown %d ms...\n", cfg->t_cooldown);
-    wait_ms(cfg->t_cooldown);
+    printf("[ESPERA_RETIRO] Esperando que se retire la mano (%d ms aprox.)\n", cfg->t_cooldown);
+    printf("(simulación simple, presione Enter para continuar)\n");
+    getchar(); getchar(); // para que el usuario apriete Enter
 
-    int nivel_ok = leer_nivel_ok();
-    if (!nivel_ok) {
-        printf("[ESPERA_RETIRO] Nivel NO OK -> SIN_STOCK\n\n");
+    int nivel = leer_nivel();
+    if (nivel == 0) {
+        printf("[ESPERA_RETIRO] Sin stock -> pasa a SIN_STOCK\n\n");
         return SIN_STOCK;
     }
 
-    printf("[ESPERA_RETIRO] Cooldown terminado -> ESPERA\n\n");
+    printf("[ESPERA_RETIRO] Cooldown terminado -> pasa a ESPERA\n\n");
     return ESPERA;
 }
 
-/* SIN_STOCK: se queda en este estado hasta que se indique recarga (simulado por entrada) */
 estados_t f_sin_stock(const config_t *cfg) {
     (void)cfg;
-    printf("[SIN_STOCK] SIN STOCK. No dispensar. Esperando recarga (s) o seguir sin stock (n).\n");
-    char s[8];
-    if (!fgets(s, sizeof(s), stdin)) return SIN_STOCK;
-    if (s[0] == 's' || s[0] == 'S') {
-        printf("[SIN_STOCK] Recarga confirmada -> ESPERA\n\n");
+    printf("[SIN_STOCK] No hay alcohol. Reponer para continuar.\n");
+    printf("Recargado? (1 = sí / 0 = no): ");
+    int repuesto;
+    scanf("%d", &repuesto);
+
+    if (repuesto) {
+        printf("[SIN_STOCK] Recarga detectada -> pasa a ESPERA\n\n");
         return ESPERA;
+    } else {
+        printf("[SIN_STOCK] Sigue sin stock -> se mantiene en SIN_STOCK\n\n");
+        return SIN_STOCK;
     }
-    printf("[SIN_STOCK] Seguir sin stock -> me mantengo en SIN_STOCK\n\n");
-    return SIN_STOCK;
 }
 
-/* ERROR: placeholder */
 estados_t f_error(const config_t *cfg) {
     (void)cfg;
-    printf("[ERROR] Estado de error. Requiere intervención (reset manual).\n");
-    /* En este modo de aprendizaje volvemos a ESPERA si el usuario presiona s */
-    char s[8];
-    printf("¿Resetear? (s/n): ");
-    if (!fgets(s, sizeof(s), stdin)) return ERROR_ESTADO;
-    if (s[0] == 's' || s[0] == 'S') return ESPERA;
+    printf("[ERROR] Error detectado. Reiniciar sistema.\n");
+    printf("¿Reiniciar ahora? (1 = sí / 0 = no): ");
+    int reset;
+    scanf("%d", &reset);
+    if (reset)
+        return ESPERA;
     return ERROR_ESTADO;
 }

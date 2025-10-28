@@ -19,6 +19,9 @@ config_t cargar_config(const char *path) {
         if (strcmp(key, "t_dispense") == 0) cfg.t_dispense = value;
         else if (strcmp(key, "t_cooldown") == 0) cfg.t_cooldown = value;
         else if (strcmp(key, "t_check") == 0) cfg.t_check = value;
+        else{
+            
+        }
     }
     fclose(f);
     printf("[config] Cargada: t_dispense=%d ms, t_cooldown=%d ms, t_check=%d ms\n",

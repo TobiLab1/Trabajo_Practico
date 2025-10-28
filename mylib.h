@@ -14,14 +14,14 @@ typedef enum {
     ERROR_ESTADO
 } estados_t;
 
-/* Configuración cargada desde config.conf */
+/* Configuración cargada desde conf.conf */
 typedef struct {
     int t_dispense;
     int t_cooldown;
     int t_check;
 } config_t;
 
-/* Prototipos */
+/* Prototipo */
 config_t cargar_config(const char *path);
 
 /* Funciones-estado: cada una recibe la config y devuelve el siguiente estado */
