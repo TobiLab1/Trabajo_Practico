@@ -1,35 +1,37 @@
-#ifndef MY_LIB
-#define MY_LIB
+#ifndef MYLIB_H
+#define MYLIB_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "avr_api.h"
 
 typedef enum {
-    INICIO = 0,
+    INICIO,
     ESPERA,
     DISPENSA,
     ESPERA_RETIRO,
-    SIN_STOCK,
-    ERROR_ESTADO
+    SIN_STOCK
 } estados_t;
 
-/* Configuración cargada desde conf.conf */
-typedef struct {
-    int t_dispense;
-    int t_cooldown;
-    int t_check;
-} config_t;
+// Prototipos 
+void init_driver(void);
 
-/* Prototipo */
-config_t cargar_config(const char *path);
+estados_t f_inicio(void);
+estados_t f_espera(void);
+estados_t f_dispensa(void);
+estados_t f_espera_retiro(void);
+estados_t f_sin_stock(void);
 
-/* Funciones-estado: cada una recibe la config y devuelve el siguiente estado */
-estados_t f_inicio(const config_t *cfg);
-estados_t f_espera(const config_t *cfg);
-estados_t f_dispensa(const config_t *cfg);
-estados_t f_espera_retiro(const config_t *cfg);
-estados_t f_sin_stock(const config_t *cfg);
-estados_t f_error(const config_t *cfg);
+// Funciones de driver
+void driver_led_verde_on(void);
+void driver_led_verde_off(void);
+void driver_led_amarillo_on(void);
+void driver_led_amarillo_off(void);
+void driver_led_rojo_on(void);
+void driver_led_rojo_off(void);
+
+int driver_mano_detectada(void);
+int driver_nivel_ok(void);
+void driver_bomba_on(void);
+void driver_bomba_off(void);
+void driver_delay_ms(unsigned int ms);
 
 #endif

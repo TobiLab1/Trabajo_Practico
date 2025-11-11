@@ -1,7 +1,7 @@
 #include "mylib.h"
 
 int main(void) {
-    config_t cfg = cargar_config("config.conf");
+    init_driver();
     estados_t estado = INICIO;
 
     while (1) {
@@ -16,9 +16,7 @@ int main(void) {
             break;
             case SIN_STOCK: estado = f_sin_stock(&cfg); 
             break;
-            case ERROR_ESTADO: estado = f_error(&cfg);
-            break;
-            default: estado = ERROR_ESTADO; 
+            default: estado = INICIO; 
             break;
         }
     }
